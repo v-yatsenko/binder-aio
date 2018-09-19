@@ -285,6 +285,9 @@ void add_relevant_includes(clang::CXXRecordDecl const *C, IncludeSet &includes, 
 	if( !includes.add_decl(C, level) ) return;
 
 	add_relevant_include_for_decl(C, includes);
+	if (C->isCXXClassMember()) {
+		add_relevant_include_for_decl(C->getOuterLexicalRecordContext(), includes);
+	}
 
 	if( auto t = dyn_cast<ClassTemplateSpecializationDecl>(C) ) {
 
@@ -989,11 +992,14 @@ void ClassBinder::bind(Context &context)
 	bool callback_structure = is_callback_structure_needed(C);
 	bool callback_structure_constructible = callback_structure and is_callback_structure_constructible(C);
 	bool trampoline = callback_structure  and  callback_structure_constructible;
+	bool inner_class = TagDecl::TagKind::TTK_Class == C->getTagKind()
+	                   and C->getTypeForDecl() != C->getOuterLexicalRecordContext()->getTypeForDecl()
+	                   and TagDecl::TagKind::TTK_Class == C->getOuterLexicalRecordContext()->getTagKind();
 
 	if(trampoline) generate_prefix_code();
 
 	string const qualified_name{ class_qualified_name(C) };
-	string const module_variable_name = context.module_variable_name( namespace_from_named_decl(C) );
+	string module_variable_name = context.module_variable_name( namespace_from_named_decl(C) );
 	//string const decl_namespace = namespace_from_named_decl(C);
 
 	string c = "{ " + generate_comment_for_declaration(C);
@@ -1007,9 +1013,23 @@ void ClassBinder::bind(Context &context)
 		if( d->getAccess() != AS_public ) maybe_holder_type = ", " + qualified_name + '*';
 	}
 
+	string python_type_name = python_class_name(C);
+
 	string maybe_trampoline = callback_structure_constructible ? ", " + binding_qualified_name : "";
 
-	c += '\t' + R"(pybind11::class_<{}{}{}{}> cl({}, "{}", "{}");)"_format(qualified_name, maybe_holder_type, maybe_trampoline, maybe_base_classes(context), module_variable_name, python_class_name(C), generate_documentation_string_for_declaration(C)) + '\n';
+	if (inner_class) {
+		// Have to change original type name to eliminate conflicts with already
+		// loaded object of outer class at import of this nested class object.
+		// So inner object is going to namespace of outer type and name is prepended
+		// with name of outer type and underscore.
+		module_variable_name = context.module_variable_name( namespace_from_named_decl(C->getOuterLexicalRecordContext()) );
+		string outer_name = C->getOuterLexicalRecordContext()->getNameAsString();
+		outs() << "Local module: " << C->getNameAsString() << " of: " << outer_name << "\n";
+		outer_name = mangle_type_name(outer_name) + "_";
+		python_type_name = outer_name + python_type_name;
+	}
+
+	c += '\t' + R"(pybind11::class_<{}{}{}{}> cl({}, "{}", "{}");)"_format(qualified_name, maybe_holder_type, maybe_trampoline, maybe_base_classes(context), module_variable_name, python_type_name, generate_documentation_string_for_declaration(C)) + '\n';
 	c += "\tpybind11::handle cl_type = cl;\n\n";
 
 	//if( C->isAbstract()  and  callback_structure) c += "\tcl.def(pybind11::init<>());\n";
