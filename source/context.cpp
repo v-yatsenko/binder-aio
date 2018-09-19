@@ -162,7 +162,7 @@ std::set<string> Context::create_all_nested_namespaces()
 	vector<string> namespaces;
 
 	for(auto & b : binders) {
-		if( b->code().size() ) {
+		if( !b->named_decl()->isCXXClassMember() and b->code().size() ) {
 			string ns = namespace_from_named_decl( b->named_decl() );
 
 			while( ns.size() ) {
