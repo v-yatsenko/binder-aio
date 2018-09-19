@@ -139,15 +139,32 @@ public:
     }
 
 	virtual bool VisitCXXRecordDecl(CXXRecordDecl *C) {
-		if( C->isCXXInstanceMember()  or  C->isCXXClassMember() ) return true;
+		if (C->isCXXInstanceMember())
+			return true;
 
-		if( binder::is_bindable(C) ) {
+		if (C->isCXXClassMember()) {
+			if (TagDecl::TagKind::TTK_Class == C->getTagKind() and
+				C->getTypeForDecl() != C->getOuterLexicalRecordContext()->getTypeForDecl() and
+				TagDecl::TagKind::TTK_Class == C->getOuterLexicalRecordContext()->getTagKind() and
+				binder::is_bindable(C)
+			) {
+				outs() << "Inner class: " << C->getQualifiedNameAsString()
+						<< " of "
+						<< C->getOuterLexicalRecordContext()->getQualifiedNameAsString()
+						<< "\n";
+				binder::BinderOP b = std::make_shared<binder::ClassBinder>(C);
+				context.add(b);
+			}
+			return true;
+		}
+
+		if (binder::is_bindable(C)) {
 			binder::BinderOP b = std::make_shared<binder::ClassBinder>(C);
 			context.add(b);
 		}
 
-        return true;
-    }
+		return true;
+	}
 
 	// virtual bool VisitClassTemplateSpecializationDecl(ClassTemplateSpecializationDecl *C) {
 	// 	if( FullSourceLoc(C->getLocation(), ast_context->getSourceManager() ).isInSystemHeader() ) return true;
