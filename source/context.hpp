@@ -83,7 +83,7 @@ public:
 	virtual void add_relevant_includes(IncludeSet &) const = 0;
 
 	/// generate binding code for this object and all its dependencies
-	virtual void bind(Context &) = 0;
+	virtual void bind(Context &, Config const &config) = 0;
 
 	// return true if code was already generate for this object
 	bool is_binded() const;

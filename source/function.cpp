@@ -484,8 +484,9 @@ void FunctionBinder::add_relevant_includes(IncludeSet &includes) const
 
 
 /// generate binding code for this object and all its dependencies
-void FunctionBinder::bind(Context &context)
+void FunctionBinder::bind(Context &context, Config const &config)
 {
+	(void)config;
 	if( is_binded() ) return;
 
 	string const module_variable_name = context.module_variable_name( namespace_from_named_decl(F) );

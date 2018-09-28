@@ -27,7 +27,7 @@ void add_relevant_includes(clang::EnumDecl const *E, IncludeSet &includes, int l
 
 
 // Generate binding for given function: py::enum_<MyEnum>(module, "MyEnum")...
-std::string bind_enum(std::string const & module, clang::EnumDecl *E);
+std::string bind_enum(std::string const & module, clang::EnumDecl *E, bool arithmetic);
 
 
 class EnumBinder : public Binder
@@ -42,7 +42,7 @@ public:
 	clang::NamedDecl * named_decl() const override { return E; };
 
 	/// check if generator can create binding
-    bool bindable() const override;
+	bool bindable() const override;
 
 	/// check if user requested binding for the given declaration
 	virtual void request_bindings_and_skipping(Config const &) override;
@@ -51,7 +51,7 @@ public:
 	void add_relevant_includes(IncludeSet &includes) const override;
 
 	/// generate binding code for this object and all its dependencies
-	void bind(Context &) override;
+	void bind(Context &, Config const &config) override;
 
 
 private:

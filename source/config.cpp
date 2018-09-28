@@ -13,6 +13,7 @@
 #include <config.hpp>
 
 #include <util.hpp>
+#include <type.hpp>
 
 
 #include <llvm/Support/raw_ostream.h>
@@ -67,6 +68,8 @@ void Config::read(string const &file_name)
 	string const _default_member_lvalue_reference_return_value_policy_	{"default_member_lvalue_reference_return_value_policy"};
 	string const _default_member_rvalue_reference_return_value_policy_  {"default_member_rvalue_reference_return_value_policy"};
 	string const _default_call_guard_   {"default_call_guard"};
+
+	string const _arithmetic_for_enum_  {"arithmetic_for_enum"};
 
 	std::ifstream f(file_name);
 	string line;
@@ -136,6 +139,12 @@ void Config::read(string const &file_name)
 					else if( token == _default_member_lvalue_reference_return_value_policy_ ) default_member_lvalue_reference_return_value_policy_ = name_without_spaces;
 					else if( token == _default_member_rvalue_reference_return_value_policy_ ) default_member_rvalue_reference_return_value_policy_ = name_without_spaces;
 					else if( token == _default_call_guard_ ) default_call_guard_ = name_without_spaces;
+
+					else if( token == _arithmetic_for_enum_ ) {
+
+						if(bind) arithmetic_enums.push_back(name_without_spaces);
+
+					}
 
 					else throw std::runtime_error("Invalid token in config file! Each token must be ether: namespace, class or function! For example: '+function aaa::bb::my_function'. Token: '" + token + "' Line: '" + line + '\'');
 				}
@@ -274,6 +283,20 @@ string Config::includes_code() const
 	string c;
 	for(auto & i: includes_to_add) c += "#include " + i + "\n";
 	return c.size() ? c+'\n' : c;
+}
+
+bool Config::is_arithmetic_requested(string const &enum__) const
+{
+	string enum_ { standard_name(enum__) };
+	enum_.erase(std::remove(enum_.begin(), enum_.end(), ' '), enum_.end());
+
+	auto result = std::find(arithmetic_enums.begin(), arithmetic_enums.end(), enum_);
+
+	if(result != arithmetic_enums.end() ) {
+		return true;
+	}
+
+	return false;
 }
 
 } // namespace binder

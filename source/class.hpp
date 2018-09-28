@@ -86,7 +86,7 @@ public:
 	void bind_with(string const &binder, Context &);
 
 	/// generate binding code for this object and all its dependencies
-	void bind(Context &) override;
+	void bind(Context &, Config const &config) override;
 
 	std::vector<clang::CXXRecordDecl const *> dependencies() const override { return dependencies_; }
 
