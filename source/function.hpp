@@ -95,7 +95,7 @@ public:
 	void add_relevant_includes(IncludeSet &includes) const override;
 
 	/// generate binding code for this object and all its dependencies
-	void bind(Context &) override;
+	void bind(Context &, Config const &config) override;
 
 private:
 	clang::FunctionDecl *F;

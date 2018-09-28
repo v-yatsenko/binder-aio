@@ -224,7 +224,7 @@ void Context::bind(Config const &config)
 			Binder & b( *sp );
 			if( !b.is_binded()  and  b.bindable() and  b.binding_requested() ) {
 				//outs() << "Binding: " << b.id() /*named_decl()->getQualifiedNameAsString()*/ << "\n";
-				b.bind(*this);
+				b.bind(*this, config);
 				flag=true;
 			}
 		}

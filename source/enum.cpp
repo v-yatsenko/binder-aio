@@ -42,12 +42,14 @@ void add_relevant_includes(clang::EnumDecl const *E, IncludeSet &includes, int l
 
 
 // Generate binding for given function: py::enum_<MyEnum>(module, "MyEnum")...
-std::string bind_enum(std::string const & module, EnumDecl *E)
+std::string bind_enum(std::string const & module, EnumDecl *E, bool arithmetic)
 {
 	string name { E->getNameAsString() };
 	string qualified_name { E->getQualifiedNameAsString() };
 
-	string r = "\tpybind11::enum_<{}>({}, \"{}\", \"{}\")\n"_format(qualified_name, module, name, generate_documentation_string_for_declaration(E));
+	string r = "\tpybind11::enum_<{}>({}, \"{}\", \"{}\"{})\n"_format(qualified_name, module, name, generate_documentation_string_for_declaration(E),
+		arithmetic ? ", pybind11::arithmetic()" : ""
+		);
 
 	for(auto e = E->enumerator_begin(); e != E->enumerator_end(); ++e) {
 		r += "\t\t.value(\"{}\", {})\n"_format(e->getNameAsString(), e->getQualifiedNameAsString());
@@ -87,14 +89,14 @@ void EnumBinder::add_relevant_includes(IncludeSet &includes) const
 }
 
 /// generate binding code for this object and all its dependencies
-void EnumBinder::bind(Context &context)
+void EnumBinder::bind(Context &context, Config const &config)
 {
 	if( is_binded() ) return;
 
 	string const module_variable_name = context.module_variable_name( namespace_from_named_decl(E) );
 
 	code()  = "\t" + generate_comment_for_declaration(E);
-	code() += bind_enum(module_variable_name, E) + ";\n\n";
+	code() += bind_enum(module_variable_name, E, config.is_arithmetic_requested(E->getQualifiedNameAsString()));
 }
 
 

@@ -976,7 +976,7 @@ std::string ClassBinder::bind_repr(Context &context)
 
 
 /// generate binding code for this object and all its dependencies
-void ClassBinder::bind(Context &context)
+void ClassBinder::bind(Context &context, Config const &config)
 {
 	if( is_binded() ) return;
 
@@ -1103,7 +1103,7 @@ void ClassBinder::bind(Context &context)
 		if(EnumDecl *e = dyn_cast<EnumDecl>(*d) ) {
 			if( e->getAccess() == AS_public ) {
 				//outs() << "Enum: " << e->getQualifiedNameAsString() << "\n";
-				c += bind_enum("cl", e);
+				c += bind_enum("cl", e, config.is_arithmetic_requested(e->getQualifiedNameAsString()));
 			}
 		}
 	}
