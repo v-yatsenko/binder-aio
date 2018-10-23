@@ -16,6 +16,7 @@
 #include <enum.hpp>
 #include <type.hpp>
 #include <util.hpp>
+#include <reporter.hpp>
 
 #include <fmt/format.h>
 
@@ -745,6 +746,9 @@ string binding_public_member_functions(CXXRecordDecl const *C, bool callback_str
 					}
 				}
 			}
+			if(ft->spec_begin() != ft->spec_end()) {
+				Reporter::get().mark_method_used(ft->getTemplatedDecl());
+			}
 		}
 	}
 
@@ -757,6 +761,7 @@ string binding_public_member_functions(CXXRecordDecl const *C, bool callback_str
 			//(*m)->dump();
 
 			c += bind_function("\tcl", *m, context);
+			Reporter::get().mark_method_used(*m);
 		}
 	}
 
@@ -902,6 +907,7 @@ string bind_constructor(ConstructorBindingInfo const &CBI, uint args_to_bind, bo
 			if(request_bindings_f) request_bindings( CBI.T->getParamDecl(i)->getOriginalType(), CBI.context);
 		}
 		c += " );\n";
+		Reporter::get().mark_method_used(dyn_cast<FunctionDecl>(CBI.T));
 	}
 	else {
 		pair<string, string> args = function_arguments_for_lambda(CBI.T, args_to_bind);

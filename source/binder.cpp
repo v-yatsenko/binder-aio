@@ -30,10 +30,12 @@
 #include <function.hpp>
 #include <class.hpp>
 #include <util.hpp>
+#include <reporter.hpp>
 
 
 using namespace clang::tooling;
 using namespace llvm;
+using binder::Reporter;
 
 
 // Apply a custom category to all command-line options so that they are the
@@ -72,6 +74,8 @@ cl::opt<bool> O_annotate_includes("annotate-includes", cl::desc("Annotate each i
 cl::opt<bool> O_single_file("single-file", cl::desc("Concatenate all binder output into single file with name: root-module-name + '.cpp'. Use this for a small projects and for testing."), cl::init(false), cl::cat(BinderToolCategory));
 
 cl::opt<bool> O_trace("trace", cl::desc("Add tracer output for each binded object (i.e. for debugging)"), cl::init(false), cl::cat(BinderToolCategory));
+
+cl::opt<std::string> O_coverage("coverage", cl::desc("Output binding coverage statistic to specified file"), cl::init(""), cl::cat(BinderToolCategory));
 
 cl::opt<bool> O_verbose("v", cl::desc("Increase verbosity of output"), cl::init(false), cl::cat(BinderToolCategory));
 
@@ -125,6 +129,11 @@ public:
 
 	virtual bool VisitFunctionDecl(FunctionDecl *F)
 	{
+		auto loc = FullSourceLoc(F->getLocation(), ast_context->getSourceManager() );
+		if( !loc.isInSystemHeader() and isa<CXXMethodDecl>(F) and
+		    ( F->isCXXInstanceMember() ? F->getAccess() == AS_public : true ) ) {
+			Reporter::get().add_method_decl(F, ast_context);
+		}
 		if( F->isCXXInstanceMember() or isa<CXXMethodDecl>(F) ) return true;
 
 		if( binder::is_bindable(F) ) {
@@ -135,11 +144,23 @@ public:
 			context.add_insertion_operator(F);
 		}
 
-        return true;
-    }
+		return true;
+	}
 
 	virtual bool VisitCXXRecordDecl(CXXRecordDecl *C) {
-		if( C->isCXXInstanceMember()  or  C->isCXXClassMember() ) return true;
+		if( C->isCXXInstanceMember() )
+			return true;
+
+		if( C->isCXXClassMember() ) {
+			if (TagDecl::TagKind::TTK_Class == C->getTagKind()) {
+				for(auto t = C->ctor_begin(); t != C->ctor_end(); ++t) {
+					if (t->getAccess() == AS_public  and  !t->isMoveConstructor()) {
+						Reporter::get().add_method_decl(*t, ast_context);
+					}
+				}
+			}
+			return true;
+		}
 
 		if( binder::is_bindable(C) ) {
 			binder::BinderOP b = std::make_shared<binder::ClassBinder>(C);
@@ -243,5 +264,10 @@ int main(int argc, const char **argv)
 	//outs() << "Root module: " << O_root_module << "\n";
 	//for(auto &s : O_bind) outs() << "Binding: '" << s << "'\n";
 
-	return tool.run(newFrontendActionFactory<BinderFrontendAction>().get());
+	int result = tool.run(newFrontendActionFactory<BinderFrontendAction>().get());
+	if( result == 0 and !O_coverage.empty() ) {
+		Reporter::get().write_report(O_coverage);
+	}
+
+	return result;
 }

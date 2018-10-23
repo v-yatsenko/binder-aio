@@ -30,6 +30,9 @@ add_clang_executable(binder
   util.hpp
   util.cpp
 
+  reporter.hpp
+  reporter.cpp
+
   fmt/format.cc
   fmt/posix.cc
   )
