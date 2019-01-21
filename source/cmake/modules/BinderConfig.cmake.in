@@ -1,0 +1,12 @@
+# This file allows users to call find_package(Binder) and pick up our targets.
+@PACKAGE_INIT@
+
+find_package(Clang REQUIRED CONFIG)
+
+set_and_check(BINDER_EXPORTED_TARGETS "@BINDER_EXPORTS@")
+set_and_check(BINDER_CMAKE_DIR "@BINDER_INSTALL_PACKAGE_DIR@")
+
+set_and_check(BINDER_EXECUTABLE "@BINDER_INSTALL_BINDIR@/binder")
+
+# Provide all our library targets to users.
+include("${CMAKE_CURRENT_LIST_DIR}/BinderTargets.cmake")

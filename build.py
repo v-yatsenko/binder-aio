@@ -95,24 +95,17 @@ def install_llvm_tool(name, source_location, prefix, debug, jobs=1, clean=True, 
 
     if not os.path.isdir(clang_path): execute('Download clang source.', 'curl http://releases.llvm.org/{llvm_version}/cfe-{llvm_version}.src.tar.xz | tar -Jxo && mv cfe-{llvm_version}.src {clang_path}'.format(llvm_version=llvm_version, clang_path=clang_path) )
 
-    if not os.path.isdir(prefix+'/tools/clang/tools/extra'): os.makedirs(prefix+'/tools/clang/tools/extra')
 
-    tool_link_path = '{prefix}/tools/clang/tools/extra/{name}'.format(prefix=prefix, name=name)
-    if os.path.islink(tool_link_path): os.unlink(tool_link_path)
-    os.symlink(source_location, tool_link_path)
 
-    cmake_lists = prefix + '/tools/clang/tools/extra/CMakeLists.txt'
-    tool_build_line = 'add_subdirectory({})'.format(name)
 
-    if not os.path.isfile(cmake_lists):
-        with open(cmake_lists, 'w') as f: f.write(tool_build_line + '\n')
 
     build_dir = prefix+'/build_' + llvm_version + '.' + Platform + '.' +_machine_name_ + ('.debug' if debug else '.release')
     if not os.path.isdir(build_dir): os.makedirs(build_dir)
     execute(
         'Building tool: {}...'.format(name),
-        'cd {build_dir} && cmake -G Ninja -DCMAKE_BUILD_TYPE={build_type} -DLLVM_ENABLE_EH=1 -DLLVM_ENABLE_RTTI=ON {gcc_install_prefix} .. && ninja bin/binder clang {jobs}'.format( # we need to build Clang so lib/clang/<version>/include is also built
+        'cd {build_dir} && cmake -G Ninja -DCMAKE_BUILD_TYPE={build_type} -DLLVM_ENABLE_EH=1 -DLLVM_ENABLE_RTTI=ON -DLLVM_EXTERNAL_CLANG_TOOLS_EXTRA_SOURCE_DIR={binder_source} {gcc_install_prefix} .. && ninja binder clang {jobs}'.format( # we need to build Clang so lib/clang/<version>/include is also built
             build_dir=build_dir,
+            binder_source=source_location,
             jobs="-j{}".format(jobs) if jobs else "",
             build_type='Debug' if debug else 'Release',
             gcc_install_prefix='-DGCC_INSTALL_PREFIX='+gcc_install_prefix if gcc_install_prefix else ''),
