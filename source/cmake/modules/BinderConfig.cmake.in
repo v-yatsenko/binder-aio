@@ -36,22 +36,19 @@ IF(NOT PYTHON_SITE_PACKAGES_DIR)
 		RETURN()
 	ENDIF()
 
-	FILE(WRITE "${CMAKE_CURRENT_BINARY_DIR}/python_lib_dir.py"
-		"from distutils import sysconfig as sc\n")
-	FILE(APPEND "${CMAKE_CURRENT_BINARY_DIR}/python_lib_dir.py"
-		"print(sc.get_python_lib(prefix='', plat_specific=True))\n")
-
-	EXECUTE_PROCESS(COMMAND ${PYTHON_EXECUTABLE}
-		"${CMAKE_CURRENT_BINARY_DIR}/python_lib_dir.py"
+	EXECUTE_PROCESS(COMMAND ${PYTHON_EXECUTABLE} -c
+		"from distutils import sysconfig as sc; print(sc.get_python_lib(prefix='', plat_specific=True))"
 	OUTPUT_VARIABLE
-		PYTHON_SITE_PACKAGES_DIR
+		COUT
 	RESULT_VARIABLE
 		RES
 	OUTPUT_STRIP_TRAILING_WHITESPACE)
-
 	IF(RES)
 		MESSAGE(FATAL_ERROR "Can't detect Python site packages path!")
 	ENDIF()
+
+	SET(PYTHON_SITE_PACKAGES_DIR "${COUT}"
+		CACHE PATH "Python site packages directory")
 ENDIF()
 
 FIND_PROGRAM(BINDER_EXECUTABLE binder)
