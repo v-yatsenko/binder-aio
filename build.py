@@ -80,8 +80,7 @@ def get_compiler_family():
     if 'cl'    in Options.compiler: return 'cl'
     return 'unknown'
 
-
-def install_llvm_tool(name, source_location, prefix, debug, jobs=1, clean=True, gcc_install_prefix=None):
+def install_llvm_tool(name, source_location, prefix, debug, jobs=1, clean=True, install_prefix=None, gcc_install_prefix=None):
     ''' Install and update (if needed) custom LLVM tool at given prefix (from config).
         Return absolute path to executable on success and terminate with error on failure
     '''
@@ -103,11 +102,12 @@ def install_llvm_tool(name, source_location, prefix, debug, jobs=1, clean=True, 
     if not os.path.isdir(build_dir): os.makedirs(build_dir)
     execute(
         'Building tool: {}...'.format(name),
-        'cd {build_dir} && cmake -G Ninja -DCMAKE_BUILD_TYPE={build_type} -DLLVM_ENABLE_EH=1 -DLLVM_ENABLE_RTTI=ON -DLLVM_EXTERNAL_CLANG_TOOLS_EXTRA_SOURCE_DIR={binder_source} {gcc_install_prefix} .. && ninja binder clang {jobs}'.format( # we need to build Clang so lib/clang/<version>/include is also built
+        'cd {build_dir} && cmake -G Ninja -DCMAKE_BUILD_TYPE={build_type} {install_prefix} -DLLVM_ENABLE_EH=1 -DLLVM_ENABLE_RTTI=ON -DLLVM_EXTERNAL_CLANG_TOOLS_EXTRA_SOURCE_DIR={binder_source} {gcc_install_prefix} .. && ninja binder clang {jobs}'.format( # we need to build Clang so lib/clang/<version>/include is also built
             build_dir=build_dir,
             binder_source=source_location,
             jobs="-j{}".format(jobs) if jobs else "",
             build_type='Debug' if debug else 'Release',
+            install_prefix='-DCMAKE_INSTALL_PREFIX={}'.format(install_prefix) if install_prefix else '',
             gcc_install_prefix='-DGCC_INSTALL_PREFIX='+gcc_install_prefix if gcc_install_prefix else ''),
         silent=True)
     print()
@@ -144,6 +144,7 @@ def main(args):
 
     parser.add_argument('-j', '--jobs', default=1, const=0, nargs="?", type=int, help="Number of processors to use on when building, use '-j' with no arguments to launch job-per-core. (default: 1) ")
     parser.add_argument("--type", default='Release', choices=['Release', 'Debug', 'MinSizeRel', 'RelWithDebInfo'], help="Specify build type")
+    parser.add_argument("--prefix", default='/usr/local', help="Install prefix")
     parser.add_argument('--compiler', default='clang', help='Compiler to use, defualt is clang')
     parser.add_argument('--binder', default='', help='Path to Binder tool. If none is given then download, build and install binder into main/source/build. Use "--binder-debug" to control which mode of binder (debug/release) is used.')
     parser.add_argument("--binder-debug", action="store_true", help="Run binder tool in debug mode (only relevant if no '--binder' option was specified)")
@@ -155,8 +156,9 @@ def main(args):
     Options = parser.parse_args()
 
     source_path = os.path.abspath('.')
+    install_prefix = Options.prefix if Options.prefix else None
 
-    if not Options.binder: Options.binder = install_llvm_tool('binder', source_path+'/source', source_path + '/build', Options.binder_debug, jobs=Options.jobs)
+    if not Options.binder: Options.binder = install_llvm_tool('binder', source_path+'/source', source_path + '/build', Options.binder_debug, jobs=Options.jobs, install_prefix=install_prefix)
 
     if not Options.pybind11: Options.pybind11 = install_pybind11(source_path + '/build')
 

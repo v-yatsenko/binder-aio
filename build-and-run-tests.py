@@ -29,6 +29,7 @@ def main(args):
 
     parser.add_argument('-j', '--jobs', default=1, const=0, nargs="?", type=int, help="Number of processors to use on when building, use '-j' with no arguments to launch job-per-core. (default: 1) ")
     parser.add_argument("--type", default='Release', choices=['Release', 'Debug', 'MinSizeRel', 'RelWithDebInfo'], help="Specify build type")
+    parser.add_argument("--prefix", default='/usr/local', help="Install prefix")
     parser.add_argument('--compiler', default='clang', help='Compiler to use, defualt is clang')
     parser.add_argument('--binder', default='', help='Path to Binder tool. If none is given then download, build and install binder into main/source/build. Use "--binder-debug" to control which mode of binder (debug/release) is used.')
     parser.add_argument("--binder-debug", action="store_true", help="Run binder tool in debug mode (only relevant if no '--binder' option was specified)")
@@ -42,7 +43,7 @@ def main(args):
 
     source_path = os.path.abspath('.')
 
-    if not Options.binder: Options.binder = build.install_llvm_tool('binder', source_path+'/source', source_path + '/build', Options.binder_debug, jobs=Options.jobs, gcc_install_prefix=Options.gcc_install_prefix)
+    if not Options.binder: Options.binder = build.install_llvm_tool('binder', source_path+'/source', source_path + '/build', Options.binder_debug, jobs=Options.jobs, install_prefix=Options.prefix, gcc_install_prefix=Options.gcc_install_prefix)
 
     if not Options.pybind11: Options.pybind11 = build.install_pybind11(source_path + '/build')
 
