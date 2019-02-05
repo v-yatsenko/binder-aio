@@ -1,12 +1,170 @@
 # This file allows users to call find_package(Binder) and pick up our targets.
 @PACKAGE_INIT@
 
-find_package(Clang REQUIRED CONFIG)
+set_and_check(CLANG_INCLUDE_DIR "@PACKAGE_CLANG_INCLUDE_DIR@")
+set_and_check(BINDER_INCLUDE_DIR "@PACKAGE_BINDER_INSTALL_INCLUDE_DIR@")
 
-set_and_check(BINDER_EXPORTED_TARGETS "@BINDER_EXPORTS@")
-set_and_check(BINDER_CMAKE_DIR "@BINDER_INSTALL_PACKAGE_DIR@")
+set(Binder_FOUND TRUE)
 
-set_and_check(BINDER_EXECUTABLE "@BINDER_INSTALL_BINDIR@/binder")
+set(Binder_FindOpts)
+if(Binder_FIND_REQUIRED)
+  list(APPEND Binder_FindOpts REQUIRED)
+endif()
 
-# Provide all our library targets to users.
-include("${CMAKE_CURRENT_LIST_DIR}/BinderTargets.cmake")
+if(Binder_FIND_QUIETLY)
+  list(APPEND Binder_FindOpts QUIET)
+endif()
+
+if(NOT BINDER_CROSS_PREFIX)
+  execute_process(COMMAND
+    ${CMAKE_CXX_COMPILER} -dumpmachine
+  OUTPUT_VARIABLE
+    BINDER_CROSS_PREFIX
+  RESULT_VARIABLE
+    RES
+  OUTPUT_STRIP_TRAILING_WHITESPACE)
+
+  if(RES)
+    message(FATAL_ERROR "Can't detect machine type!")
+  endif()
+endif()
+
+if(NOT PYTHON_SITE_PACKAGES_DIR)
+  find_package(PythonInterp ${Binder_FindOpts})
+  if(NOT PythonInterp_FOUND)
+    set(Binder_FOUND FALSE)
+      return()
+  endif()
+
+  execute_process(COMMAND ${PYTHON_EXECUTABLE} -c
+    "from distutils import sysconfig as sc; print(sc.get_python_lib(prefix='', plat_specific=True))"
+  OUTPUT_VARIABLE
+    COUT
+  RESULT_VARIABLE
+    RES
+  OUTPUT_STRIP_TRAILING_WHITESPACE)
+  if(RES)
+    message(FATAL_ERROR "Can't detect Python site packages path!")
+  endif()
+
+  set(PYTHON_SITE_PACKAGES_DIR "${COUT}"
+    CACHE PATH "Python site packages directory")
+endif()
+
+find_program(BINDER_EXECUTABLE binder)
+if(NOT BINDER_EXECUTABLE)
+  message(FATAL_ERROR "Can't find binder executable!")
+endif()
+
+find_package(PythonLibs ${Binder_FindOpts})
+if(NOT PythonLibs_FOUND)
+  set(Binder_FOUND FALSE)
+    return()
+endif()
+
+#
+# ADD_BINDER_LIBRARY(NAME <name>
+#   HEADERS header1 [header2 ...])
+#   [CONFIG <config>]
+#   [BIND namespace1 [namespace2 ...]]
+#   [SKIP namespace1 [namespace2 ...]]
+#   [COMPILE_OPTIONS option1 [option2 ...]]
+#   [INCLUDES_DIRECTORIES directory1 [directory2 ...]]
+#   [LINK_LIBRARIES lib1 [lib2 ...]]
+#   [SOURCES source1 [source2 ...]]
+#
+function(ADD_BINDER_LIBRARY)
+  cmake_parse_arguments(BINDER
+    ""
+    "NAME"
+    "BIND;SKIP;HEADERS;CONFIG;COMPILE_OPTIONS;INCLUDES_DIRECTORIES;LINK_LIBRARIES;SOURCES"
+    ${ARGN})
+
+  if(BINDER_UNPARSED_ARGUMENTS)
+    message(FATAL_ERROR "Unknown arguments: ${BINDER_UNPARSED_ARGUMENTS}")
+  endif(BINDER_UNPARSED_ARGUMENTS)
+
+  foreach(REQUIRED NAME HEADERS)
+    if(NOT BINDER_${REQUIRED})
+      message(FATAL_ERROR "${REQUIRED} is not specified!")
+    endif()
+  endforeach()
+
+  set(BINDER_OPTIONS)
+  foreach(bind ${BINDER_BIND})
+    list(APPEND BINDER_OPTIONS "-bind;${bind}")
+  endforeach()
+  foreach(skip ${BINDER_SKIP})
+    list(APPEND BINDER_OPTIONS "-skip;${skip}")
+  endforeach()
+
+  foreach(config ${BINDER_CONFIG})
+    list(APPEND BINDER_OPTIONS "-config;${config}")
+  endforeach()
+
+  if(CMAKE_CXX_FLAGS)
+    string(REPLACE " " ";" COMPILER_OPTIONS ${CMAKE_CXX_FLAGS})
+  endif()
+  foreach(inc ${BINDER_INCLUDES_DIRECTORIES})
+    list(APPEND COMPILER_OPTIONS "-I;${inc}")
+  endforeach()
+  foreach(lib ${BINDER_LINK_LIBRARIES})
+    if(NOT TARGET ${lib})
+      continue()
+    endif()
+
+    get_target_property(incdirs ${lib} INTERFACE_INCLUDE_DIRECTORIES)
+      foreach(incdir ${incdirs})
+        list(APPEND COMPILER_OPTIONS "$<$<BOOL:${incdir}>:-I${incdir}>")
+      endforeach()
+  foreach()
+
+  add_custom_command(OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/cppbinder_${BINDER_NAME}.cpp"
+  COMMAND
+    ${BINDER_EXECUTABLE}
+      -root-module "${BINDER_NAME}"
+      -prefix "${CMAKE_CURRENT_BINARY_DIR}/cppbinder_"
+      -single-file
+      ${BINDER_OPTIONS}
+      ${BINDER_HEADERS}
+      --
+      -isystem ${CLANG_INCLUDE_DIR}
+      -target ${BINDER_CROSS_PREFIX}
+      ${BINDER_COMPILE_OPTIONS}
+      ${COMPILER_OPTIONS}
+  DEPENDS
+    ${BINDER_HEADERS}
+    ${BINDER_CONFIG})
+
+  add_library(cppbinder_${BINDER_NAME} SHARED
+    ${BINDER_SOURCES}
+    "${CMAKE_CURRENT_BINARY_DIR}/cppbinder_${BINDER_NAME}.cpp")
+
+  target_compile_options(cppbinder_${BINDER_NAME}
+  PRIVATE
+    ${BINDER_COMPILE_OPTIONS})
+
+  set_target_properties(cppbinder_${BINDER_NAME}
+  PROPERTIES
+    PREFIX ""
+    OUTPUT_NAME "${BINDER_NAME}")
+
+  target_include_directories(cppbinder_${BINDER_NAME}
+  PRIVATE
+    ${PYTHON_INCLUDE_DIRS}
+    ${BINDER_INCLUDES_DIRECTORIES}
+    ${BINDER_INCLUDE_DIR})
+
+  target_link_libraries(cppbinder_${BINDER_NAME}
+  PRIVATE
+    ${PYTHON_LIBRARIES}
+    ${BINDER_LINK_LIBRARIES})
+
+  install(TARGETS cppbinder_${BINDER_NAME}
+    EXPORT
+      "${PROJECT_NAME}"
+    LIBRARY DESTINATION
+      "${PYTHON_SITE_PACKAGES_DIR}"
+    COMPONENT
+      Runtime)
+endfunction()

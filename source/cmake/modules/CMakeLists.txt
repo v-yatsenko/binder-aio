@@ -10,6 +10,8 @@ set(BINDER_INSTALL_BINDIR ${CMAKE_INSTALL_FULL_BINDIR})
 set(BINDER_INSTALL_INCLUDE_DIR ${CMAKE_INSTALL_FULL_INCLUDEDIR}/binder)
 set(binder_cmake_builddir "${CMAKE_CURRENT_BINARY_DIR}/${BINDER_INSTALL_PACKAGE_DIR}")
 
+set(CLANG_INCLUDE_DIR "lib${LLVM_LIBDIR_SUFFIX}/clang/${CLANG_VERSION}/include")
+
 export(EXPORT libbinder-exports
   FILE ${binder_cmake_builddir}/BinderTargets.cmake
   )
@@ -22,6 +24,7 @@ configure_package_config_file("BinderConfig.cmake.in"
     BINDER_INSTALL_PACKAGE_DIR
     BINDER_INSTALL_BINDIR
     BINDER_INSTALL_INCLUDE_DIR
+    CLANG_INCLUDE_DIR
   NO_CHECK_REQUIRED_COMPONENTS_MACRO
 )
 
