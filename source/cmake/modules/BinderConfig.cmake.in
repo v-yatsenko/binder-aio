@@ -117,7 +117,7 @@ function(ADD_BINDER_LIBRARY)
       foreach(incdir ${incdirs})
         list(APPEND COMPILER_OPTIONS "$<$<BOOL:${incdir}>:-I${incdir}>")
       endforeach()
-  foreach()
+  endforeach()
 
   add_custom_command(OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/cppbinder_${BINDER_NAME}.cpp"
   COMMAND
