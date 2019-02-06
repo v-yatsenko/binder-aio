@@ -133,6 +133,7 @@ function(ADD_BINDER_LIBRARY)
       ${COMPILER_OPTIONS}
   DEPENDS
     ${BINDER_HEADERS}
+    ${BINDER_SOURCES}
     ${BINDER_CONFIG})
 
   add_library(cppbinder_${BINDER_NAME} SHARED
