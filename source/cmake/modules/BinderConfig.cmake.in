@@ -102,9 +102,8 @@ function(ADD_BINDER_LIBRARY)
     list(APPEND BINDER_OPTIONS "-config;${config}")
   endforeach()
 
-  if(CMAKE_CXX_FLAGS)
-    string(REPLACE " " ";" COMPILER_OPTIONS ${CMAKE_CXX_FLAGS})
-  endif()
+  string(REPLACE " " ";" COMPILER_OPTIONS "${CMAKE_CXX_FLAGS}")
+
   foreach(inc ${BINDER_INCLUDES_DIRECTORIES})
     list(APPEND COMPILER_OPTIONS "-I;${inc}")
   endforeach()
