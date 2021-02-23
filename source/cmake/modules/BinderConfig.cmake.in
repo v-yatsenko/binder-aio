@@ -111,15 +111,50 @@ function(ADD_BINDER_LIBRARY)
   foreach(inc ${BINDER_INCLUDES_DIRECTORIES})
     list(APPEND COMPILER_OPTIONS "-I;${inc}")
   endforeach()
-  foreach(lib ${BINDER_LINK_LIBRARIES})
+
+  function(get_dependencies DEPEND_LIST)
+    set(TARGETS ${ARGN})
+    foreach(target ${TARGETS})
+      if(NOT TARGET ${target})
+        continue()
+      endif()
+
+      list(APPEND DEPS ${target})
+
+      get_target_property(IMPORTED ${target} IMPORTED)
+
+      if(IMPORTED)
+        get_target_property(LIBS ${target} INTERFACE_LINK_LIBRARIES)
+      else()
+        get_target_property(LIBS ${target} LINK_LIBRARIES)
+      endif()
+
+      get_dependencies(DEPS ${LIBS})
+    endforeach()
+    set(${DEPEND_LIST} "${DEPS}" PARENT_SCOPE)
+  endfunction()
+
+  set(${DEPENDENCIES} "")
+  get_dependencies(DEPENDENCIES ${BINDER_LINK_LIBRARIES})
+
+  foreach(lib ${DEPENDENCIES})
     if(NOT TARGET ${lib})
       continue()
     endif()
 
-    get_target_property(incdirs ${lib} INTERFACE_INCLUDE_DIRECTORIES)
-      foreach(incdir ${incdirs})
-        list(APPEND COMPILER_OPTIONS "$<$<BOOL:${incdir}>:-I${incdir}>")
-      endforeach()
+    get_target_property(IMPORTED ${lib} IMPORTED)
+
+    if(IMPORTED)
+      get_target_property(incdirs ${lib} INTERFACE_INCLUDE_DIRECTORIES)
+        foreach(incdir ${incdirs})
+          list(APPEND COMPILER_OPTIONS "$<$<BOOL:${incdir}>:-I${incdir}>")
+        endforeach()
+    else(IMPORTED)
+      get_target_property(incdirs ${lib} INCLUDE_DIRECTORIES)
+        foreach(incdir ${incdirs})
+          list(APPEND COMPILER_OPTIONS "$<$<BOOL:${incdir}>:-I${incdir}>")
+        endforeach()
+    endif(IMPORTED)
   endforeach()
 
   add_custom_command(OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/cppbinder_${BINDER_NAME}.cpp"
